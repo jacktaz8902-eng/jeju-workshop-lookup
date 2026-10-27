@@ -134,6 +134,8 @@ button.stat.staff::after{color:var(--staff)}
 .seg{position:sticky;top:env(safe-area-inset-top,0px);z-index:5;display:grid;grid-template-columns:repeat(4,1fr);gap:6px;padding:8px 0;background:var(--bg)}
 .seg button{min-height:52px;border:1px solid var(--line);background:var(--surface);color:var(--muted);border-radius:12px;font-weight:700;font-size:1.05rem}
 .seg button[aria-selected="true"]{background:var(--deep);border-color:var(--deep);color:var(--on-deep)}
+.seg.seg2{grid-template-columns:1fr 1fr}
+.msec{scroll-margin-top:calc(76px + env(safe-area-inset-top,0px))}
 .filters{display:flex;gap:8px}
 .filters button{flex:1;min-height:44px;border:1px solid var(--line);background:var(--surface);color:var(--ink);border-radius:999px;font-weight:600}
 .filters button[aria-pressed="true"]{background:var(--accent-soft);border-color:var(--accent);color:var(--accent)}
@@ -251,6 +253,7 @@ async function unlock(pw,remember){
   try{data=await decrypt(ENC_P,pw)}catch(e){data=await decrypt(ENC_M,pw);mgr=true}
   ROWS=data.map(([round,room,type,name,biz,group,pending,role,gender,phone])=>({round,room,type,name,biz,group,pending:!!pending,role:role||"",gender:gender||"",phone:phone||""}));
   isManager=mgr;
+  if(mgr)ROWS=ROWS.filter(x=>!x.role); // 운영 인원은 매니저 화면에서도 제외
   if(remember){try{sessionStorage.setItem("pw",pw)}catch(e){}}
   $("gate").hidden=true;$("app").hidden=false;$("logout").hidden=false;$("modes").hidden=!mgr;
   $("lede").textContent=mgr?"매니저 화면입니다. 운영 인원과 전체 배정을 확인할 수 있습니다.":"차수를 고른 뒤 이름이나 조, 호실로 찾아보세요.";
@@ -398,31 +401,19 @@ function renderManager(){
   const staffRooms=rooms.filter(([,a])=>a.every(isStaff)).length;
   const groups=[...new Set(rows.map(x=>x.group).filter(g=>g&&g!=="-"))].sort((a,b)=>num(a)-num(b));
 
-  const TABS=[["groups","조"],["rooms","방배정"],["contact","연락처"],["staff","운영진"]];
   let h='<div class="stats">'+
-    '<button type="button" class="stat" data-mtab="contact"><span class="k">참여자</span><span class="v">'+conf.length+'명</span><span class="s">남 '+men+' · 여 '+women+(pend.length?'<br>미정 '+pend.length+'명':'')+'</span></button>'+
-    '<button type="button" class="stat staff" data-mtab="staff"><span class="k">운영 인원</span><span class="v">'+S.length+'명</span><span class="s">'+Object.entries(roles).map(([k,v])=>esc(k)+' '+v).join('<br>')+'</span></button>'+
-    '<button type="button" class="stat" data-mtab="rooms"><span class="k">객실</span><span class="v">'+rooms.length+'실</span><span class="s">2인실 '+twin+' · 1인실 '+single+'<br>운영 전용 '+staffRooms+'실</span></button></div>';
-  h+='<div class="seg" role="tablist" aria-label="매니저 메뉴">'+TABS.map(([k,l])=>'<button type="button" role="tab" data-mtab="'+k+'" aria-selected="'+(mTab===k)+'">'+l+'</button>').join("")+'</div>';
+    '<div class="stat"><span class="k">참여자</span><span class="v">'+conf.length+'명</span><span class="s">남 '+men+' · 여 '+women+(pend.length?'<br>미정 '+pend.length+'명':'')+'</span></div>'+
+    '<button type="button" class="stat" data-jump="secGroups"><span class="k">조</span><span class="v">'+groups.length+'개</span><span class="s">조별 인원·연락처</span></button>'+
+    '<button type="button" class="stat" data-jump="secRooms"><span class="k">방배정</span><span class="v">'+rooms.length+'실</span><span class="s">2인실 '+twin+' · 1인실 '+single+'</span></button></div>';
+  h+='<nav class="seg seg2" aria-label="바로가기"><button type="button" data-jump="secGroups">조</button><button type="button" data-jump="secRooms">방배정</button></nav>';
 
-  if(mTab==="contact"){
-    h+='<div class="stack-s"><div class="field"><input id="mq" type="search" placeholder="이름, 초성, 조, 호실로 찾기" aria-label="연락처 검색" value="'+esc(mQuery)+'">'+
-      '<button type="button" class="clear" id="mqClear" aria-label="지우기"'+(mQuery?'':' hidden')+'>×</button></div>'+
-      '<div class="filters">'+[["all","전체"],["p","참여자"],["s","운영진"]].map(([k,l])=>'<button type="button" data-mfilter="'+k+'" aria-pressed="'+(mFilter===k)+'">'+l+'</button>').join("")+'</div>'+
-      '<div id="mlist" class="stack-s"></div></div>';
-  }else if(mTab==="rooms"){
-    h+=toolbar(rooms.length+"실")+'<div class="stack-s">'+rooms.map(([room,a])=>acc("r:"+room,
-      '<span class="lbl2">'+esc(room)+'<small>'+esc(typeLabel(a[0]))+'</small></span><span class="sum">'+a.map(x=>esc(x.name)+(x.role?'<span class="role">'+esc(x.role)+'</span>':'')+pendTag(x)).join(", ")+'</span>',
-      a,a.every(isStaff))).join("")+'</div>';
-  }else if(mTab==="groups"){
-    h+=toolbar(groups.length+"개 조")+'<div class="stack-s">'+groups.map(g=>{const a=rows.filter(x=>x.group===g),pp=a.filter(x=>!isStaff(x)&&!x.pending),st=a.filter(isStaff);
-      return acc("g:"+g,'<span class="lbl2">'+esc(g)+'<small>'+a.filter(x=>!x.pending).length+'명</small></span><span class="sum">'+a.map(x=>esc(x.name)+pendTag(x)).join(", ")+
-        '<small>남 '+pp.filter(x=>x.gender==="남").length+' · 여 '+pp.filter(x=>x.gender==="여").length+(st.length?' · 운영 '+st.length:'')+'</small></span>',a,false)}).join("")+'</div>';
-  }else{
-    h+='<div class="rhead"><strong>운영 인원</strong><span>'+S.length+'명 · 총 '+(conf.length+S.length)+'명 숙박</span></div><div class="list pad">'+S.slice().sort(byNum("room")).map(mPerson).join("")+'</div>';
-  }
+  h+='<section id="secGroups" class="stack-s msec">'+toolbar("조 · "+groups.length+"개","secGroups")+groups.map(g=>{const a=rows.filter(x=>x.group===g),pp=a.filter(x=>!x.pending);
+    return acc("g:"+g,'<span class="lbl2">'+esc(g)+'<small>'+pp.length+'명</small></span><span class="sum">'+a.map(x=>esc(x.name)+pendTag(x)).join(", ")+
+      '<small>남 '+pp.filter(x=>x.gender==="남").length+' · 여 '+pp.filter(x=>x.gender==="여").length+'</small></span>',a)}).join("")+'</section>';
+
+  h+='<section id="secRooms" class="stack-s msec">'+toolbar("방배정 · "+rooms.length+"실","secRooms")+rooms.map(([room,a])=>acc("r:"+room,
+    '<span class="lbl2">'+esc(room)+'<small>'+esc(typeLabel(a[0]))+'</small></span><span class="sum">'+a.map(x=>esc(x.name)+pendTag(x)).join(", ")+'</span>',a)).join("")+'</section>';
   $("managerView").innerHTML=h;
-  if(mTab==="contact"){const i=$("mq");i.addEventListener("input",()=>{mQuery=i.value;$("mqClear").hidden=!i.value;drawContacts()});drawContacts()}
 }
 let mTab="groups",mQuery="",mFilter="all";const openKeys=new Set();
 try{const t=localStorage.getItem("mtab2");if(t)mTab=t}catch(e){}
@@ -441,8 +432,8 @@ function acc(key,summary,people,staffOnly){
   return '<details class="acc'+(staffOnly?' is-staff':'')+'" data-key="'+esc(key)+'"'+(openKeys.has(key)?' open':'')+'><summary>'+summary+'<span class="chev" aria-hidden="true">⌄</span></summary>'+
     '<div class="acc-body">'+people.map(x=>mPerson(x)).join("")+'</div></details>';
 }
-function toolbar(label){
-  return '<div class="rhead"><strong>'+label+'</strong><span><button type="button" class="linkbtn" data-expand="1">모두 펼치기</button> · <button type="button" class="linkbtn" data-expand="0">모두 접기</button></span></div>';
+function toolbar(label,scope){
+  return '<div class="rhead"><strong>'+label+'</strong><span><button type="button" class="linkbtn" data-expand="1" data-scope="'+scope+'">모두 펼치기</button> · <button type="button" class="linkbtn" data-expand="0" data-scope="'+scope+'">모두 접기</button></span></div>';
 }
 function drawContacts(){
   const q=mQuery.replace(/\s+/g,"");let rows=inRound();
@@ -458,9 +449,9 @@ function drawContacts(){
 }
 function toast(msg){let t=$("toast");if(!t){t=document.createElement("div");t.id="toast";t.setAttribute("role","status");document.body.appendChild(t)}t.textContent=msg;t.classList.add("on");clearTimeout(t._h);t._h=setTimeout(()=>t.classList.remove("on"),1600)}
 $("managerView").addEventListener("click",e=>{
-  const t=e.target.closest("[data-mtab]");if(t){mTab=t.dataset.mtab;try{localStorage.setItem("mtab2",mTab)}catch(_){}renderManager();$("managerView").querySelector(".seg").scrollIntoView({behavior:"smooth",block:"start"});return}
+  const j=e.target.closest("[data-jump]");if(j){$(j.dataset.jump).scrollIntoView({behavior:"smooth",block:"start"});return}
   const f=e.target.closest("[data-mfilter]");if(f){mFilter=f.dataset.mfilter;document.querySelectorAll("[data-mfilter]").forEach(b=>b.setAttribute("aria-pressed",b===f));drawContacts();return}
-  const x=e.target.closest("[data-expand]");if(x){const open=x.dataset.expand==="1";document.querySelectorAll("#managerView details.acc").forEach(d=>{d.open=open;open?openKeys.add(d.dataset.key):openKeys.delete(d.dataset.key)});return}
+  const x=e.target.closest("[data-expand]");if(x){const open=x.dataset.expand==="1";document.querySelectorAll("#"+x.dataset.scope+" details.acc").forEach(d=>{d.open=open;open?openKeys.add(d.dataset.key):openKeys.delete(d.dataset.key)});return}
   const c=e.target.closest("[data-copy]");if(c){const v=c.dataset.copy;
     const done=()=>toast(v+" 복사했습니다");
     if(navigator.clipboard&&navigator.clipboard.writeText)navigator.clipboard.writeText(v).then(done).catch(()=>fallbackCopy(v,done));else fallbackCopy(v,done);return}
