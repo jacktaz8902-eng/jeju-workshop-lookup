@@ -398,7 +398,7 @@ function renderManager(){
   const staffRooms=rooms.filter(([,a])=>a.every(isStaff)).length;
   const groups=[...new Set(rows.map(x=>x.group).filter(g=>g&&g!=="-"))].sort((a,b)=>num(a)-num(b));
 
-  const TABS=[["contact","연락처"],["rooms","객실"],["groups","조"],["staff","운영진"]];
+  const TABS=[["groups","조"],["rooms","방배정"],["contact","연락처"],["staff","운영진"]];
   let h='<div class="stats">'+
     '<button type="button" class="stat" data-mtab="contact"><span class="k">참여자</span><span class="v">'+conf.length+'명</span><span class="s">남 '+men+' · 여 '+women+(pend.length?'<br>미정 '+pend.length+'명':'')+'</span></button>'+
     '<button type="button" class="stat staff" data-mtab="staff"><span class="k">운영 인원</span><span class="v">'+S.length+'명</span><span class="s">'+Object.entries(roles).map(([k,v])=>esc(k)+' '+v).join('<br>')+'</span></button>'+
@@ -424,8 +424,8 @@ function renderManager(){
   $("managerView").innerHTML=h;
   if(mTab==="contact"){const i=$("mq");i.addEventListener("input",()=>{mQuery=i.value;$("mqClear").hidden=!i.value;drawContacts()});drawContacts()}
 }
-let mTab="contact",mQuery="",mFilter="all";const openKeys=new Set();
-try{const t=localStorage.getItem("mtab");if(t)mTab=t}catch(e){}
+let mTab="groups",mQuery="",mFilter="all";const openKeys=new Set();
+try{const t=localStorage.getItem("mtab2");if(t)mTab=t}catch(e){}
 const dial=p=>p.phone.replace(/[^0-9+]/g,"");
 function mActions(p){
   if(!p.phone)return '<span class="nonum">등록된 번호 없음</span>';
@@ -458,7 +458,7 @@ function drawContacts(){
 }
 function toast(msg){let t=$("toast");if(!t){t=document.createElement("div");t.id="toast";t.setAttribute("role","status");document.body.appendChild(t)}t.textContent=msg;t.classList.add("on");clearTimeout(t._h);t._h=setTimeout(()=>t.classList.remove("on"),1600)}
 $("managerView").addEventListener("click",e=>{
-  const t=e.target.closest("[data-mtab]");if(t){mTab=t.dataset.mtab;try{localStorage.setItem("mtab",mTab)}catch(_){}renderManager();$("managerView").querySelector(".seg").scrollIntoView({behavior:"smooth",block:"start"});return}
+  const t=e.target.closest("[data-mtab]");if(t){mTab=t.dataset.mtab;try{localStorage.setItem("mtab2",mTab)}catch(_){}renderManager();$("managerView").querySelector(".seg").scrollIntoView({behavior:"smooth",block:"start"});return}
   const f=e.target.closest("[data-mfilter]");if(f){mFilter=f.dataset.mfilter;document.querySelectorAll("[data-mfilter]").forEach(b=>b.setAttribute("aria-pressed",b===f));drawContacts();return}
   const x=e.target.closest("[data-expand]");if(x){const open=x.dataset.expand==="1";document.querySelectorAll("#managerView details.acc").forEach(d=>{d.open=open;open?openKeys.add(d.dataset.key):openKeys.delete(d.dataset.key)});return}
   const c=e.target.closest("[data-copy]");if(c){const v=c.dataset.copy;
