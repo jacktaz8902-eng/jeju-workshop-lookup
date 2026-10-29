@@ -1,0 +1,76 @@
+<!doctype html>
+<html lang="ko"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="robots" content="noindex">
+<title>부부캠프 명단 검색</title>
+<style>
+:root{--bg:#f6f7f9;--card:#fff;--ink:#1d2433;--sub:#6b7280;--line:#e5e7eb;--acc:#2563eb;--chip:#eef2ff}
+@media (prefers-color-scheme:dark){:root{--bg:#111318;--card:#1b1f27;--ink:#e8eaf0;--sub:#9aa3b2;--line:#2a303b;--acc:#60a5fa;--chip:#1e2a44}}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--ink);font-family:-apple-system,"Apple SD Gothic Neo","Noto Sans KR",sans-serif}
+.wrap{max-width:560px;margin:0 auto;padding:16px}
+h1{font-size:19px;margin:8px 0 2px}.meta{color:var(--sub);font-size:13px;margin-bottom:14px}
+#lock{margin-top:22vh;text-align:center}
+input{width:100%;font-size:17px;padding:13px 14px;border:1px solid var(--line);border-radius:12px;background:var(--card);color:var(--ink);outline:none}
+input:focus{border-color:var(--acc)}
+button{margin-top:10px;width:100%;font-size:16px;padding:13px;border:0;border-radius:12px;background:var(--acc);color:#fff;font-weight:600}
+.err{color:#ef4444;font-size:14px;height:20px;margin-top:8px}
+.chips{display:flex;gap:6px;overflow-x:auto;padding:10px 0 4px}
+.chip{flex:0 0 auto;padding:7px 12px;border-radius:999px;border:1px solid var(--line);background:var(--card);font-size:14px;color:var(--ink)}
+.chip.on{background:var(--acc);border-color:var(--acc);color:#fff}
+.count{color:var(--sub);font-size:13px;margin:8px 2px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:12px 14px;margin-bottom:8px;display:flex;justify-content:space-between;align-items:center}
+.nm{font-size:17px;font-weight:700}.sub{color:var(--sub);font-size:14px;margin-top:3px}
+.tag{font-size:13px;background:var(--chip);color:var(--acc);padding:4px 9px;border-radius:8px;white-space:nowrap}
+mark{background:#fde68a;color:inherit;border-radius:3px}
+.hide{display:none}
+.room{font-size:20px;font-weight:800;color:var(--acc);background:var(--chip);padding:8px 12px;border-radius:10px;white-space:nowrap}
+.cp{font-size:15px;font-weight:500;color:var(--sub)}
+</style></head><body><div class="wrap">
+<div id="lock">
+  <h1>부부캠프 대상자 명단</h1><div class="meta">비밀번호를 입력하세요</div>
+  <input id="pw" type="password" inputmode="numeric" maxlength="8" placeholder="비밀번호" autocomplete="off">
+  <button id="go">열기</button><div class="err" id="err"></div>
+</div>
+<div id="app" class="hide">
+  <h1>부부캠프 대상자 명단</h1>
+  <div class="meta">부산 11.4(수)~11.6(금) · 라마다앙코르 바이 윈덤 부산해운대</div>
+  <input id="q" type="search" placeholder="대상자·배우자·청·서·과·방 검색 (예: 김, 부산, 7호)">
+  <div class="chips" id="chips"></div>
+  <div class="count" id="count"></div>
+  <div id="list"></div>
+</div>
+</div>
+<script>
+const B={"s":"kua0bF7xQ8ppbPk0L2xjtA==","i":"WV94OQU8MZHdDxFZ","d":"dJWE4ojl5R6/zsGjc225o8rVVQst9YXQnArUD1Ch7daaj3k27JRNbT1fzI8zR0MQIIGRfk5OHjxgGOO5eu5CGuC77LMAVVvvmbgmpDBIy54vhlfd3Guriy8vmQPGUUOdSZySvsVMRaBzcSyaL9NbRfIYysMwlK6uzn90615+X8Lulho9Pr81S0s+Hd3yz3pixG7pgVygXPXvRMHm5/yNgHGVMRNOkWpqtiUCND2LATtml89wiyY5Pxpw/eBHz1SvCuSRGgnFsP5QCExjL4/wWrRYkWKVNU9udkJQGD1+FMnCgzEMkzkCQjcPkJ0yf/CFeqFaKoKc+uQORSCa4g7+CufKyRWuLWRG1UQCuA01uG4ji05YtCi6up4T4VbZ7LH0yol/npTFxC/nOxjlHtzd+9J24vvKoD5zq4kY5yQRJt4aNyYC0e+ricw2NwQu24KUxHuuKRO6OmDDrqoHKHhpCbujO2H2eaqQU+0NzkFpTcJFjUgwdmsHcKQkNJUMQNI4SgC1qXPQysP6FvHVFbPWFCCaz296LOdjukAfed08C1yj9Dh2pSjEVGblXuTBY+627Z0+3loOh328hHODQKPU2eNdcUP/e78eFAqtdraHA8lkZ3sZg7IUYI3IVC0CVE4i3j29pqjj9vdHawBt3HRUvJPSxndocA2uW1RiViOR9Jja+8JcfLPaA/zyOuu/RRBEsYBrJ2seLhVhP8Di5qaLZ6c9tl/FlWTAcnhkf93oXvRvWgJQs+X53rpiWMRn8DXTHEhclOSEwH6/0/lX8rjax6vkwBR84QCsGFnH50f9Nf1j6Z1Kz6oUcqwORQHhIWylG2ruDh1zeIHT6G/7FQbAXKo5rjnMoNHwmgGHC/hNU/4zBQWE55cb+JY085NKhfY1yBUr8rgBYUUM/wm/SSdIvxsrvsw5f0Dba8M+hImv8911N55h9OtzlB9AAdz68ru5UiLlMw3GloblVuT2kXR2PF6gqf3poFIvNDcIY45bfSMW5xFsleYFAwKc0vxb3sCeP3zilyNZVQDrzWPsU9USzUAIse0arSqnF8skH8Pk/3OqiEpjNqShBe9wb99R6kJQee7PR5RB9bA7Drs5EYUFE9iA0gx3kBbZzVmPnA3Vyvtf7vUVWxULkrOUVzazfoa/fuJLi/L7Qp7lbO4BHAGEIkcn7R/yI38/6w1WGXIMWCeuEXQBFj371bOtxVWYdRw/hQqn4Lu9I4I9JiiOeS0n9o+hPOq9DaIaI8mLmZqPt9ExuDoV0BD28vPxlIYTqahdi6OvIKVUK4ymMYsuvHXn/jPmhcHtllliq7kmrmLZPoBGuzB8NLgzWVKaQ7khuS2QxL6oVe+NrhD44KS9RvCSrCB342jt/DQpFRECyfp3Y2+uGVHTrVw945QGBGnZ550Jv5DxdDtsEjTbnY6a2c7K1X4zR3/UiWmgx7o7oZZmNOpc1JPPYpylqjNQOqZ/h01QmHN35qTf7w/R4SY7kfRoPha91+2A8twAkI9nGB4vkUuhIt88TCH/1Za1gbu6Z2LQ5bkLh03gPF+IHClNdhjw/Vh4GyXWg/UHLfW7DZybehmwj0Qbvv/Cr7IzHDD0hj11GZ97c5cycOBQkauH0Am8gQnE/A8y9vj44N1pB4tj1TzkmX+BwHnowdeHA4y3txl51cxWqLyVRxjuxL/fAte60jNp/ef+YKJoVVKw9eppxjThJP9slMvt4aVR3Mwr7r9XZarqAOohvf3e/I6PHhg7q4doZWS6fI/woHwGNn3qVBBBRcURFy04jEYdXWf7qfbIcIwoheAIa0A4g81JJYcWt+j42LraFyS4p8JYkzZp8jL7vCipD/kDPxjPBniUGfqJCSTCgvo/HJ77Vsz8QIZfBYlcaQ16O76zbo7rlQ7HYdPKJKC/JlvXoRlciHnOsPR87X0zTcTnvEwXyOrYJMJuT/3Atg=="};
+const b64=s=>Uint8Array.from(atob(s),c=>c.charCodeAt(0));
+let D=[],sel="전체";
+async function unlock(){
+  const pw=document.getElementById('pw').value;
+  try{
+    const km=await crypto.subtle.importKey('raw',new TextEncoder().encode(pw),'PBKDF2',false,['deriveKey']);
+    const k=await crypto.subtle.deriveKey({name:'PBKDF2',salt:b64(B.s),iterations:200000,hash:'SHA-256'},km,{name:'AES-GCM',length:256},false,['decrypt']);
+    const pt=await crypto.subtle.decrypt({name:'AES-GCM',iv:b64(B.i)},k,b64(B.d));
+    D=JSON.parse(new TextDecoder().decode(pt));
+    document.getElementById('lock').classList.add('hide');
+    document.getElementById('app').classList.remove('hide');
+    chips();render();
+  }catch(e){document.getElementById('err').textContent='비밀번호가 맞지 않습니다';}
+}
+document.getElementById('go').onclick=unlock;
+document.getElementById('pw').addEventListener('keydown',e=>{if(e.key==='Enter')unlock()});
+function chips(){
+  const cs=["전체",...new Set(D.map(r=>r[1]))];
+  const el=document.getElementById('chips');
+  el.innerHTML=cs.map(c=>'<button class="chip'+(c===sel?' on':'')+'" data-c="'+c+'">'+c+'</button>').join('');
+  el.querySelectorAll('.chip').forEach(b=>b.onclick=()=>{sel=b.dataset.c;chips();render();});
+}
+const esc=s=>s.replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+function hl(s,q){s=esc(s);if(!q)return s;const i=s.indexOf(q);return i<0?s:s.slice(0,i)+'<mark>'+s.slice(i,i+q.length)+'</mark>'+s.slice(i+q.length);}
+function render(){
+  const q=document.getElementById('q').value.trim();const rq=q.match(/^(\d+)\s*호?$/);
+  const r=D.filter(x=>(sel==="전체"||x[1]===sel)&&(!q||(rq?x[4]===rq[1]+'호':x.some(v=>v.includes(q)))));
+  document.getElementById('count').textContent=r.length+'명';
+  document.getElementById('list').innerHTML=r.map(x=>'<div class="card"><div><div class="nm">'+hl(x[0],q)+' <span class="cp">♥ '+hl(x[5],q)+'</span></div><div class="sub">'+hl(x[1],q)+' · '+hl(x[2],q)+' · '+hl(x[3],q)+'</div></div><span class="room">'+hl(x[4],q)+'</span></div>').join('')||'<div class="count">검색 결과 없음</div>';
+}
+document.getElementById('q').addEventListener('input',render);
+</script></body></html>
