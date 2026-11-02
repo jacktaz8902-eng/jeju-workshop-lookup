@@ -244,7 +244,7 @@ footer{font-size:.9rem;color:var(--muted);border-top:1px solid var(--line);paddi
     <div id="managerView" class="stack" hidden></div>
   </div>
 
-  <footer><span>배정 내용은 현장 사정에 따라 변경될 수 있습니다. 궁금한 점은 담당자에게 문의해 주세요.</span><span class="ver">업데이트 11/02 2차 조 변경 반영</span><button type="button" class="logout" id="logout" hidden>나가기</button></footer>
+  <footer><span>배정 내용은 현장 사정에 따라 변경될 수 있습니다. 궁금한 점은 담당자에게 문의해 주세요.</span><span class="ver">업데이트 11/02-b (2차 조 변경 반영)</span><button type="button" class="logout" id="logout" hidden>나가기</button></footer>
 </div>
 
 <script>
@@ -284,7 +284,11 @@ async function unlock(pw,remember){
     showError("화면을 그리는 중 오류가 났습니다: "+(err&&err.message||err));
   }
 }
-function showError(text){let el=$("errbox");if(!el){el=document.createElement("p");el.id="errbox";el.className="hint err";el.setAttribute("role","alert");$("app").prepend(el)}el.textContent=text}
+function diag(){const u=navigator.userAgent;
+  const b=/KAKAOTALK/i.test(u)?"카카오톡":/NAVER/i.test(u)?"네이버앱":/SamsungBrowser/i.test(u)?"삼성인터넷":/CriOS|Chrome/i.test(u)?"크롬":/Safari/i.test(u)?"사파리":"기타";
+  const os=/iPhone|iPad/i.test(u)?"iOS":/Android/i.test(u)?"안드로이드":"PC";
+  return os+"/"+b+" · 암호화 "+(window.crypto&&crypto.subtle?"지원":"미지원")+" · 버전 1102b"}
+function showError(text){let el=$("errbox");if(!el){el=document.createElement("p");el.id="errbox";el.className="hint err";el.setAttribute("role","alert");$("app").insertBefore(el,$("app").firstChild)}el.textContent=text+" ["+diag()+"]"}
 window.addEventListener("error",e=>{if(!$("app").hidden)showError("오류: "+e.message+" — 새로고침해 주세요.")});
 $("gate").addEventListener("submit",async e=>{
   e.preventDefault();
@@ -294,6 +298,7 @@ $("gate").addEventListener("submit",async e=>{
   try{await unlock(pw,true)}
   catch(err){msg.className="hint err";
     msg.textContent=(err&&err.message==="WRONG_PW")?"비밀번호가 맞지 않습니다. 다시 입력해 주세요.":"열지 못했습니다: "+(err&&err.message||err)+" — 새로고침 후 다시 시도해 주세요.";
+    msg.textContent+=" [진단: 입력 "+pw.length+"자리("+(/^\d+$/.test(pw)?"숫자":"숫자 아님")+") · "+diag()+"]";
     $("pw").select()}
   finally{btn.disabled=false}
 });
