@@ -244,7 +244,7 @@ footer{font-size:.9rem;color:var(--muted);border-top:1px solid var(--line);paddi
     <div id="managerView" class="stack" hidden></div>
   </div>
 
-  <footer><span>배정 내용은 현장 사정에 따라 변경될 수 있습니다. 궁금한 점은 담당자에게 문의해 주세요.</span><button type="button" class="logout" id="logout" hidden>나가기</button></footer>
+  <footer><span>배정 내용은 현장 사정에 따라 변경될 수 있습니다. 궁금한 점은 담당자에게 문의해 주세요.</span><span class="ver">업데이트 11/02 2차 조 변경 반영</span><button type="button" class="logout" id="logout" hidden>나가기</button></footer>
 </div>
 
 <script>
@@ -265,9 +265,11 @@ async function decrypt(enc,pw){
   const buf=await crypto.subtle.decrypt({name:"AES-CBC",iv:b64(enc.iv)},key,b64(enc.ct));
   return JSON.parse(new TextDecoder().decode(buf));
 }
+// 두 데이터를 동시에 풀어 보고 먼저 성공한 쪽을 씀 (느린 휴대폰에서 7777 대기 시간 절반)
+function firstOk(ps){return new Promise((res,rej)=>{let n=ps.length;ps.forEach(p=>p.then(res,()=>{if(--n===0)rej(new Error("WRONG_PW"))}))})}
 async function unlock(pw,remember){
-  let data,mgr=false;
-  try{data=await decrypt(ENC_P,pw)}catch(e){data=await decrypt(ENC_M,pw);mgr=true}
+  const r=await firstOk([decrypt(ENC_P,pw).then(d=>({d,mgr:false})),decrypt(ENC_M,pw).then(d=>({d,mgr:true}))]);
+  const data=r.d,mgr=r.mgr;
   ROWS=data.map(([round,room,type,name,biz,group,pending,role,gender,phone])=>({round,room,type,name,biz,group,pending:!!pending,role:role||"",gender:gender||"",phone:phone||""}));
   isManager=mgr;
   if(mgr)ROWS=ROWS.filter(x=>!x.role); // 운영 인원은 매니저 화면에서도 제외
@@ -275,15 +277,24 @@ async function unlock(pw,remember){
   $("gate").hidden=true;$("app").hidden=false;$("logout").hidden=false;$("modes").hidden=!mgr;
   $("lede").textContent=mgr?"매니저 화면입니다. 운영 인원과 전체 배정을 확인할 수 있습니다.":"차수를 고른 뒤 이름이나 조, 호실로 찾아보세요.";
   try{const s=localStorage.getItem("round");if(ROUNDS[s])current=s;if(mgr&&localStorage.getItem("mode")==="manager")mode="manager"}catch(e){}
-  render();
+  try{render()}
+  catch(err){ // 매니저 화면에서 오류가 나면 조회 화면으로 되돌리고 원인을 보여 줌
+    mode="search";try{localStorage.removeItem("mode");localStorage.removeItem("mtab2")}catch(_){}
+    try{render()}catch(_){}
+    showError("화면을 그리는 중 오류가 났습니다: "+(err&&err.message||err));
+  }
 }
+function showError(text){let el=$("errbox");if(!el){el=document.createElement("p");el.id="errbox";el.className="hint err";el.setAttribute("role","alert");$("app").prepend(el)}el.textContent=text}
+window.addEventListener("error",e=>{if(!$("app").hidden)showError("오류: "+e.message+" — 새로고침해 주세요.")});
 $("gate").addEventListener("submit",async e=>{
   e.preventDefault();
   const pw=$("pw").value.trim(),btn=$("gateBtn"),msg=$("gateMsg");if(!pw)return;
   if(!(window.crypto&&crypto.subtle)){msg.className="hint err";msg.textContent="이 화면에서는 열 수 없습니다. 인터넷 주소(https)로 다시 접속해 주세요.";return}
   btn.disabled=true;msg.className="hint";msg.textContent="확인 중입니다…";
   try{await unlock(pw,true)}
-  catch(err){msg.className="hint err";msg.textContent="비밀번호가 맞지 않습니다. 다시 입력해 주세요.";$("pw").select()}
+  catch(err){msg.className="hint err";
+    msg.textContent=(err&&err.message==="WRONG_PW")?"비밀번호가 맞지 않습니다. 다시 입력해 주세요.":"열지 못했습니다: "+(err&&err.message||err)+" — 새로고침 후 다시 시도해 주세요.";
+    $("pw").select()}
   finally{btn.disabled=false}
 });
 $("logout").onclick=()=>{try{sessionStorage.removeItem("pw");localStorage.removeItem("mode")}catch(e){}location.reload()};
@@ -336,7 +347,7 @@ document.querySelectorAll("#modes button").forEach(b=>b.onclick=()=>{mode=b.data
 function setQuery(v,scroll){$("q").value=v;run();if(scroll)$("result").scrollIntoView({behavior:"smooth",block:"start"})}
 document.addEventListener("click",e=>{
   const b=e.target.closest("button[data-q],button[data-ex]");if(!b)return;
-  setQuery(b.dataset.q??b.dataset.ex,!!b.dataset.q);
+  setQuery(b.dataset.q!=null?b.dataset.q:b.dataset.ex,!!b.dataset.q);
 });
 $("q").addEventListener("input",run);
 $("form").addEventListener("submit",e=>{e.preventDefault();$("q").blur()});
@@ -501,7 +512,8 @@ $("managerView").addEventListener("toggle",e=>{const d=e.target;if(d.matches&&d.
 function fallbackCopy(v,done){const ta=document.createElement("textarea");ta.value=v;ta.setAttribute("readonly","");ta.style.position="fixed";ta.style.opacity="0";document.body.appendChild(ta);ta.select();try{document.execCommand("copy");done()}catch(e){toast("길게 눌러 복사해 주세요: "+v)}ta.remove()}
 
 (async()=>{let pw=null;try{pw=sessionStorage.getItem("pw")}catch(e){}
-  if(pw){try{await unlock(pw,false)}catch(e){}}})();
+  if(pw){try{await unlock(pw,false)}catch(e){try{sessionStorage.removeItem("pw")}catch(_){}
+    if(e&&e.message!=="WRONG_PW"){$("gateMsg").className="hint err";$("gateMsg").textContent="열지 못했습니다: "+(e.message||e)+" — 비밀번호를 다시 입력해 주세요."}}}})();
 </script>
 </body>
 </html>
