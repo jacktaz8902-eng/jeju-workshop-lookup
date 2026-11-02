@@ -14,7 +14,7 @@
 :root{
   --bg:#F4F5F2; --surface:#FFFFFF; --ink:#111A18; --muted:#55605C; --line:#D5DAD4;
   --accent:#7E6238; --accent-soft:#F1EADF; --deep:#1D3530; --on-deep:#FFFFFF; --on-accent:#FFFFFF;
-  --warn:#9A3F2B; --warn-soft:#F8E7E1; --staff:#2F5D7C; --staff-soft:#E3EDF4;
+  --warn:#9A3F2B; --warn-soft:#F8E7E1; --staff:#2F5D7C; --staff-soft:#E3EDF4; --ok:#2E7D4F; --on-ok:#FFFFFF;
   --display:"Noto Serif KR","Apple SD Gothic Neo",serif;
   --body:"IBM Plex Sans KR","Apple SD Gothic Neo","Malgun Gothic",sans-serif;
   color-scheme:light;
@@ -22,7 +22,7 @@
 @media (prefers-color-scheme: dark){:root{
   --bg:#0F1513; --surface:#18211F; --ink:#F0F2EE; --muted:#A9B3AF; --line:#2E3B38;
   --accent:#D3B07A; --accent-soft:#2B261D; --deep:#2C4F48; --on-deep:#FFFFFF; --on-accent:#16130E;
-  --warn:#EBA190; --warn-soft:#3A2420; --staff:#9CC3DE; --staff-soft:#1E2E39; color-scheme:dark}}
+  --warn:#EBA190; --warn-soft:#3A2420; --staff:#9CC3DE; --staff-soft:#1E2E39; --ok:#6FCF97; --on-ok:#0F1513; color-scheme:dark}}
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
 [hidden]{display:none!important}
 html{font-size:18px;-webkit-text-size-adjust:100%}
@@ -135,6 +135,23 @@ button.stat.staff::after{color:var(--staff)}
 .seg button{min-height:52px;border:1px solid var(--line);background:var(--surface);color:var(--muted);border-radius:12px;font-weight:700;font-size:1.05rem}
 .seg button[aria-selected="true"]{background:var(--deep);border-color:var(--deep);color:var(--on-deep)}
 .seg.seg2{grid-template-columns:1fr 1fr}
+.seg.seg3{grid-template-columns:repeat(3,1fr)}
+.stat .v small{font-size:1rem;color:var(--muted);font-weight:600}
+.attbar{background:var(--surface);border:1px solid var(--line);border-radius:16px;padding:16px;display:flex;flex-direction:column;gap:10px}
+.attrow{display:flex;justify-content:space-between;align-items:baseline;gap:12px}
+.attrow strong{font-family:var(--display);font-size:1.35rem}
+.attrow span{color:var(--muted);font-weight:600}
+.prog{height:12px;background:var(--line);border-radius:999px;overflow:hidden}
+.prog i{display:block;height:100%;background:var(--ok);border-radius:999px;transition:width .3s}
+.chk{display:flex;align-items:center;gap:12px;width:100%;border:0;background:none;padding:4px 0;text-align:left;color:inherit;min-height:56px;font:inherit}
+.chk .box{flex:none;width:36px;height:36px;border:2px solid var(--muted);border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:1.25rem;font-weight:800;background:var(--surface)}
+.chk .mp-top{flex:1;min-width:0}
+.chk .when{flex:none;font-size:.78rem;line-height:1.25;color:var(--muted);text-align:right;font-variant-numeric:tabular-nums}
+.mp.in .chk .box{background:var(--ok);border-color:var(--ok);color:var(--on-ok)}
+.mp.in .chk .when{color:var(--ok);font-weight:700}
+.mp.in .chk b{color:var(--ok)}
+.okmark{color:var(--ok);font-weight:800;margin-right:2px}
+.okc{color:var(--ok);font-weight:700}
 .msec{scroll-margin-top:calc(76px + env(safe-area-inset-top,0px))}
 .filters{display:flex;gap:8px}
 .filters button{flex:1;min-height:44px;border:1px solid var(--line);background:var(--surface);color:var(--ink);border-radius:999px;font-weight:600}
@@ -401,20 +418,36 @@ function renderManager(){
   const staffRooms=rooms.filter(([,a])=>a.every(isStaff)).length;
   const groups=[...new Set(rows.map(x=>x.group).filter(g=>g&&g!=="-"))].sort((a,b)=>num(a)-num(b));
 
+  const inN=conf.filter(isIn).length,absent=P.filter(x=>!isIn(x)),pct=conf.length?Math.round(inN/conf.length*100):0;
+
   let h='<div class="stats">'+
-    '<div class="stat"><span class="k">참여자</span><span class="v">'+conf.length+'명</span><span class="s">남 '+men+' · 여 '+women+(pend.length?'<br>미정 '+pend.length+'명':'')+'</span></div>'+
+    '<button type="button" class="stat" data-jump="secAtt"><span class="k">출석</span><span class="v">'+inN+'<small>/'+conf.length+'</small></span><span class="s">남 '+men+' · 여 '+women+(pend.length?'<br>미정 '+pend.length+'명':'')+'</span></button>'+
     '<button type="button" class="stat" data-jump="secGroups"><span class="k">조</span><span class="v">'+groups.length+'개</span><span class="s">조별 인원·연락처</span></button>'+
     '<button type="button" class="stat" data-jump="secRooms"><span class="k">방배정</span><span class="v">'+rooms.length+'실</span><span class="s">2인실 '+twin+' · 1인실 '+single+'</span></button></div>';
-  h+='<nav class="seg seg2" aria-label="바로가기"><button type="button" data-jump="secGroups">조</button><button type="button" data-jump="secRooms">방배정</button></nav>';
+  h+='<nav class="seg seg3" aria-label="바로가기"><button type="button" data-jump="secAtt">출석</button><button type="button" data-jump="secGroups">조</button><button type="button" data-jump="secRooms">방배정</button></nav>';
+
+  h+='<section id="secAtt" class="stack-s msec"><div class="attbar"><div class="attrow"><strong>출석 '+inN+' / '+conf.length+'명</strong><span>'+(absent.length?'미출석 '+absent.length+'명':'전원 출석')+'</span></div>'+
+    '<div class="prog" role="progressbar" aria-valuenow="'+pct+'" aria-valuemin="0" aria-valuemax="100"><i style="width:'+pct+'%"></i></div>'+
+    '<p class="hint">이름을 누르면 출석, 한 번 더 누르면 취소됩니다. 기록은 이 휴대폰에만 저장됩니다.</p></div>'+
+    (absent.length?acc("a:absent",'<span class="lbl2">미출석<small>'+absent.length+'명</small></span><span class="sum">'+absent.map(x=>esc(x.name)+pendTag(x)).join(", ")+'</span>',absent)
+      :'<div class="empty"><strong>모두 출석했습니다.</strong></div>')+
+    '<button type="button" class="linkbtn" data-attreset="1" style="align-self:flex-end">'+current+' 출석 기록 초기화</button></section>';
 
   h+='<section id="secGroups" class="stack-s msec">'+toolbar("조 · "+groups.length+"개","secGroups")+groups.map(g=>{const a=rows.filter(x=>x.group===g),pp=a.filter(x=>!x.pending);
-    return acc("g:"+g,'<span class="lbl2">'+esc(g)+'<small>'+pp.length+'명</small></span><span class="sum">'+a.map(x=>esc(x.name)+pendTag(x)).join(", ")+
-      '<small>남 '+pp.filter(x=>x.gender==="남").length+' · 여 '+pp.filter(x=>x.gender==="여").length+'</small></span>',a)}).join("")+'</section>';
+    return acc("g:"+g,'<span class="lbl2">'+esc(g)+'<small>'+pp.length+'명</small></span><span class="sum">'+a.map(x=>nm(x)+pendTag(x)).join(", ")+
+      '<small>남 '+pp.filter(x=>x.gender==="남").length+' · 여 '+pp.filter(x=>x.gender==="여").length+' · <b class="okc">출석 '+pp.filter(isIn).length+'/'+pp.length+'</b></small></span>',a)}).join("")+'</section>';
 
   h+='<section id="secRooms" class="stack-s msec">'+toolbar("방배정 · "+rooms.length+"실","secRooms")+rooms.map(([room,a])=>acc("r:"+room,
-    '<span class="lbl2">'+esc(room)+'<small>'+esc(typeLabel(a[0]))+'</small></span><span class="sum">'+a.map(x=>esc(x.name)+pendTag(x)).join(", ")+'</span>',a)).join("")+'</section>';
+    '<span class="lbl2">'+esc(room)+'<small>'+esc(typeLabel(a[0]))+'</small></span><span class="sum">'+a.map(x=>nm(x)+pendTag(x)).join(", ")+'</span>',a)).join("")+'</section>';
   $("managerView").innerHTML=h;
 }
+/* 출석 (기기별 저장) */
+let ATT={};try{ATT=JSON.parse(localStorage.getItem("att_v1")||"{}")||{}}catch(e){ATT={}}
+const attKey=p=>p.round+"|"+p.name;
+const isIn=p=>!!ATT[attKey(p)];
+const hm=iso=>{const d=new Date(iso);return String(d.getHours()).padStart(2,"0")+":"+String(d.getMinutes()).padStart(2,"0")};
+const nm=x=>(isIn(x)?'<span class="okmark" aria-label="출석">✓</span>':'')+esc(x.name);
+function saveAtt(){try{localStorage.setItem("att_v1",JSON.stringify(ATT))}catch(e){toast("이 휴대폰에 저장하지 못했습니다")}}
 let mTab="groups",mQuery="",mFilter="all";const openKeys=new Set();
 try{const t=localStorage.getItem("mtab2");if(t)mTab=t}catch(e){}
 const dial=p=>p.phone.replace(/[^0-9+]/g,"");
@@ -425,7 +458,10 @@ function mActions(p){
     '<button type="button" class="act copy" data-copy="'+esc(p.phone)+'" aria-label="번호 복사">복사</button></div>';
 }
 function mPerson(x,hi){
-  return '<div class="mp"><div class="mp-top"><b>'+(hi||esc(x.name))+'</b>'+pendTag(x)+roleTag(x)+'<span class="gt">'+esc(groupText(x))+' · '+esc(x.room)+'</span></div>'+
+  const on=isIn(x);
+  return '<div class="mp'+(on?' in':'')+'"><button type="button" class="chk" data-att="'+esc(attKey(x))+'" aria-pressed="'+on+'" aria-label="'+esc(x.name)+(on?' 출석 취소':' 출석 체크')+'">'+
+    '<span class="box" aria-hidden="true">'+(on?'✓':'')+'</span><span class="mp-top"><b>'+(hi||esc(x.name))+'</b>'+pendTag(x)+roleTag(x)+'<span class="gt">'+esc(groupText(x))+' · '+esc(x.room)+'</span></span>'+
+    '<span class="when">'+(on?hm(ATT[attKey(x)])+'<br>출석':'출석<br>체크')+'</span></button>'+
     (x.phone?'<span class="num">'+esc(x.phone)+'</span>':'')+(x.biz&&!x.role?'<span class="bz2">'+esc(x.biz)+'</span>':'')+mActions(x)+'</div>';
 }
 function acc(key,summary,people,staffOnly){
@@ -449,6 +485,10 @@ function drawContacts(){
 }
 function toast(msg){let t=$("toast");if(!t){t=document.createElement("div");t.id="toast";t.setAttribute("role","status");document.body.appendChild(t)}t.textContent=msg;t.classList.add("on");clearTimeout(t._h);t._h=setTimeout(()=>t.classList.remove("on"),1600)}
 $("managerView").addEventListener("click",e=>{
+  const ck=e.target.closest("[data-att]");if(ck){const k=ck.dataset.att,name=k.split("|")[1];
+    if(ATT[k]){delete ATT[k];toast(name+" 님 출석 취소")}else{ATT[k]=new Date().toISOString();toast(name+" 님 출석 ✓")}
+    saveAtt();renderManager();return}
+  const rs=e.target.closest("[data-attreset]");if(rs){if(window.confirm(current+" 출석 기록을 모두 지울까요?")){Object.keys(ATT).forEach(k=>{if(k.startsWith(current+"|"))delete ATT[k]});saveAtt();renderManager();toast(current+" 출석 기록을 지웠습니다")}return}
   const j=e.target.closest("[data-jump]");if(j){$(j.dataset.jump).scrollIntoView({behavior:"smooth",block:"start"});return}
   const f=e.target.closest("[data-mfilter]");if(f){mFilter=f.dataset.mfilter;document.querySelectorAll("[data-mfilter]").forEach(b=>b.setAttribute("aria-pressed",b===f));drawContacts();return}
   const x=e.target.closest("[data-expand]");if(x){const open=x.dataset.expand==="1";document.querySelectorAll("#"+x.dataset.scope+" details.acc").forEach(d=>{d.open=open;open?openKeys.add(d.dataset.key):openKeys.delete(d.dataset.key)});return}
